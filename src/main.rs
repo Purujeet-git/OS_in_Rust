@@ -1,26 +1,37 @@
-#![no_main] //For Not linking the RUST Library as this is a os so we need to make it rid of any dependency
-#![no_std] //disable all RUST level entry points
+#![no_std]
+#![no_main]
+#![feature(custom_test_frameworks)]
+#![test_runner(blog_os::test_runner)]
+#![reexport_test_harness_main = "test_main"]
 
 use core::panic::PanicInfo;
+use blog_os::println;
 
+#[unsafe(no_mangle)]
+pub extern "C" fn _start() -> ! {
+    println!("Hello World{}", "!");
 
-//This function is called on panic
-#[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
+    #[cfg(test)]
+    test_main();
+
     loop {}
 }
 
-static HELLO: &[u8] = b"Hello World!";
-
-mod  vga_buffer;
-
-#[unsafe(no_mangle)] // don't mangle this function  meaning don't use this name anywhere
-pub extern "C" fn _start() -> ! {
-    // this function is the entry point, since the linker looks for a function
-    // named '_start' by default
-    println!("Hello World{}","!");
-     
-    loop{} 
+/// This function is called on panic.
+#[cfg(not(test))]
+#[panic_handler]
+fn panic(info: &PanicInfo) -> ! {
+    println!("{}", info);
+    loop {}
 }
 
+#[cfg(test)]
+#[panic_handler]
+fn panic(info: &PanicInfo) -> ! {
+    blog_os::test_panic_handler(info)
+}
 
+#[test_case]
+fn trivial_assertion() {
+    assert_eq!(1, 1);
+}
